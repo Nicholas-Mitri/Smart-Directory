@@ -77,7 +77,7 @@ Available schemas:
     args = parser.parse_args()
 
     # Load the schema
-    schema_path = Path("schemas") / f"{args.schema}.json"
+    schema_path = Path("schemas") / f"{args.schema}.json".lower()
     try:
         with open(schema_path) as f:
             schema = json.load(f)
