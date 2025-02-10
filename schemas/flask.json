@@ -1,0 +1,111 @@
+{
+  "flask_project": {
+    "type": "directory",
+    "contents": {
+      "run.py": {
+        "type": "file",
+        "content": "from app import create_app\n\napp = create_app()\n\nif __name__ == '__main__':\n    app.run(debug=True)"
+      },
+      "config.py": {
+        "type": "file",
+        "content": "import os\nfrom pathlib import Path\n\nBASE_DIR = Path(__file__).resolve().parent\n\nclass Config:\n    SECRET_KEY = 'your-secret-key-here'\n    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + str(BASE_DIR / 'app.db')\n    SQLALCHEMY_TRACK_MODIFICATIONS = False\n    UPLOAD_FOLDER = str(BASE_DIR / 'app' / 'static' / 'uploads')"
+      },
+      "requirements.txt": {
+        "type": "file",
+        "content": "flask>=2.3.0\nflask-sqlalchemy>=3.0.0\nflask-login>=0.6.0\nflask-migrate>=4.0.0\nflask-wtf>=1.1.0\nwerkzeug>=2.3.0\npython-dotenv>=1.0.0"
+      },
+      "app": {
+        "type": "directory",
+        "contents": {
+          "__init__.py": {
+            "type": "file",
+            "content": "from flask import Flask\nfrom flask_sqlalchemy import SQLAlchemy\nfrom flask_login import LoginManager\nfrom config import Config\n\ndb = SQLAlchemy()\nlogin_manager = LoginManager()\n\ndef create_app():\n    app = Flask(__name__)\n    app.config.from_object(Config)\n\n    db.init_app(app)\n    login_manager.init_app(app)\n    login_manager.login_view = 'auth.login'\n\n    from app.main import bp as main_bp\n    app.register_blueprint(main_bp)\n\n    from app.auth import bp as auth_bp\n    app.register_blueprint(auth_bp)\n\n    return app"
+          },
+          "models": {
+            "type": "directory",
+            "contents": {
+              "__init__.py": {
+                "type": "file",
+                "content": ""
+              },
+              "user.py": {
+                "type": "file",
+                "content": "from app import db, login_manager\nfrom flask_login import UserMixin\nfrom werkzeug.security import generate_password_hash, check_password_hash\n\nclass User(UserMixin, db.Model):\n    id = db.Column(db.Integer, primary_key=True)\n    username = db.Column(db.String(64), unique=True, nullable=False)\n    email = db.Column(db.String(120), unique=True, nullable=False)\n    password_hash = db.Column(db.String(128))\n\n    def set_password(self, password):\n        self.password_hash = generate_password_hash(password)\n\n    def check_password(self, password):\n        return check_password_hash(self.password_hash, password)\n\n@login_manager.user_loader\ndef load_user(id):\n    return User.query.get(int(id))"
+              }
+            }
+          },
+          "main": {
+            "type": "directory",
+            "contents": {
+              "__init__.py": {
+                "type": "file",
+                "content": "from flask import Blueprint\n\nbp = Blueprint('main', __name__)\n\nfrom app.main import routes"
+              },
+              "routes.py": {
+                "type": "file",
+                "content": "from flask import render_template\nfrom app.main import bp\n\n@bp.route('/')\n@bp.route('/index')\ndef index():\n    return render_template('index.html')"
+              }
+            }
+          },
+          "auth": {
+            "type": "directory",
+            "contents": {
+              "__init__.py": {
+                "type": "file",
+                "content": "from flask import Blueprint\n\nbp = Blueprint('auth', __name__)\n\nfrom app.auth import routes"
+              },
+              "routes.py": {
+                "type": "file",
+                "content": "from flask import render_template, redirect, url_for, flash\nfrom flask_login import login_user, logout_user, current_user\nfrom app.auth import bp\nfrom app.models.user import User\n\n@bp.route('/login')\ndef login():\n    return render_template('auth/login.html')\n\n@bp.route('/logout')\ndef logout():\n    logout_user()\n    return redirect(url_for('main.index'))"
+              }
+            }
+          },
+          "templates": {
+            "type": "directory",
+            "contents": {
+              "base.html": {
+                "type": "file",
+                "content": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>{% block title %}Flask App{% endblock %}</title>\n    <link rel=\"stylesheet\" href=\"{{ url_for('static', filename='css/style.css') }}\">\n</head>\n<body>\n    <nav>\n        <a href=\"{{ url_for('main.index') }}\">Home</a>\n        {% if current_user.is_authenticated %}\n            <a href=\"{{ url_for('auth.logout') }}\">Logout</a>\n        {% else %}\n            <a href=\"{{ url_for('auth.login') }}\">Login</a>\n        {% endif %}\n    </nav>\n    {% with messages = get_flashed_messages() %}\n        {% if messages %}\n            {% for message in messages %}\n                <div class=\"flash\">{{ message }}</div>\n            {% endfor %}\n        {% endif %}\n    {% endwith %}\n    {% block content %}{% endblock %}\n</body>\n</html>"
+              },
+              "index.html": {
+                "type": "file",
+                "content": "{% extends \"base.html\" %}\n\n{% block content %}\n    <h1>Welcome to Flask</h1>\n{% endblock %}"
+              },
+              "auth": {
+                "type": "directory",
+                "contents": {
+                  "login.html": {
+                    "type": "file",
+                    "content": "{% extends \"base.html\" %}\n\n{% block content %}\n    <h1>Sign In</h1>\n    <form action=\"\" method=\"post\" novalidate>\n        <p>\n            <label for=\"username\">Username</label><br>\n            <input type=\"text\" id=\"username\" name=\"username\" required>\n        </p>\n        <p>\n            <label for=\"password\">Password</label><br>\n            <input type=\"password\" id=\"password\" name=\"password\" required>\n        </p>\n        <p><input type=\"submit\" value=\"Sign In\"></p>\n    </form>\n{% endblock %}"
+                  }
+                }
+              }
+            }
+          },
+          "static": {
+            "type": "directory",
+            "contents": {
+              "css": {
+                "type": "directory",
+                "contents": {
+                  "style.css": {
+                    "type": "file",
+                    "content": "body {\n    margin: 0;\n    padding: 0;\n    font-family: Arial, sans-serif;\n}\n\nnav {\n    background-color: #333;\n    padding: 1rem;\n}\n\nnav a {\n    color: white;\n    text-decoration: none;\n    margin-right: 1rem;\n}\n\n.flash {\n    padding: 1rem;\n    margin: 1rem 0;\n    background-color: #f8d7da;\n    border: 1px solid #f5c6cb;\n    border-radius: 4px;\n    color: #721c24;\n}"
+                  }
+                }
+              },
+              "js": {
+                "type": "directory",
+                "contents": {}
+              },
+              "uploads": {
+                "type": "directory",
+                "contents": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
